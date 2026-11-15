@@ -14,7 +14,7 @@ import (
 
 // releaseTag is the release marker of this branch. /health reports it, so a
 // rollback to an older release is visible without reading the deploy log.
-const releaseTag = "v2"
+const releaseTag = "v3"
 
 func main() {
 	if runError := run(os.Args[1:]); runError != nil {

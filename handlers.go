@@ -43,6 +43,8 @@ func newRouter(service *application) http.Handler {
 	router.HandleFunc("GET /api/items/{itemID}", service.handleGetItem)
 	router.HandleFunc("PUT /api/items/{itemID}", service.handleUpdateItem)
 	router.HandleFunc("DELETE /api/items/{itemID}", service.handleDeleteItem)
+	router.HandleFunc("GET /api/tags", service.handleListTags)
+	router.HandleFunc("POST /api/tags", service.handleCreateTag)
 	return withCORS(router)
 }
 
