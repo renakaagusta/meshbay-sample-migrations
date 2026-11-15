@@ -1,0 +1,34 @@
+# One service, but the manifest is here because the schema is migrated by the
+# pre-deploy hook instead of at start-up. Every key below is a documented
+# meshbay.toml key (services[].name, pre_deploy, ports, domains, build,
+# resources, healthcheck, env); nothing custom.
+[[services]]
+name = "api"
+# pre_deploy runs as `sh -c <command>` in the new revision's image, before that
+# revision starts. The migration runner is the same binary as the server, so a
+# failing migration exits non-zero and the rollout must stop.
+pre_deploy = 'binary=./meshbay-migrations; [ -x "$binary" ] || binary=/app/meshbay-migrations; [ -x "$binary" ] || { echo "pre_deploy: meshbay-migrations not found in $(pwd); files: $(ls)" >&2; exit 127; }; exec "$binary" migrate'
+ports = ["8080"]
+
+[services.build]
+builder = "railpack"
+# The output lands in the application directory, which is also the runtime
+# working directory, so `./meshbay-migrations` works for both start and pre_deploy.
+build = "go build -o meshbay-migrations ."
+start = "./meshbay-migrations serve"
+
+[services.resources]
+cpus = 0.5
+memory = "256M"
+
+[services.healthcheck]
+path = "/health"
+interval = "10s"
+timeout = "3s"
+start_period = "20s"
+retries = 3
+
+[services.env]
+# Name only: DATABASE_URL comes from the project variable that points at the
+# Postgres database of this project (Meshbay injects PORT itself).
+DATABASE_URL = ""
