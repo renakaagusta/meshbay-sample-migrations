@@ -14,15 +14,19 @@ import (
 )
 
 type itemRecord struct {
-	ItemID    int64     `json:"id"`
-	ItemName  string    `json:"name"`
-	ItemNote  string    `json:"note"`
+	ItemID   int64  `json:"id"`
+	ItemName string `json:"name"`
+	ItemNote string `json:"note"`
+	// TagID comes from migration 0004_items_tag_id, the migration that is
+	// deliberately broken on this branch.
+	TagID     *int64    `json:"tag_id"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
 type itemRequest struct {
 	ItemName string `json:"name"`
 	ItemNote string `json:"note"`
+	TagID    *int64 `json:"tag_id"`
 }
 
 type healthResponse struct {
@@ -72,11 +76,11 @@ func (service *application) handleHealth(responseWriter http.ResponseWriter, req
 	})
 }
 
-const itemColumns = `id, name, note, created_at`
+const itemColumns = `id, name, note, tag_id, created_at`
 
 func scanItem(row pgx.Row) (itemRecord, error) {
 	var record itemRecord
-	scanError := row.Scan(&record.ItemID, &record.ItemName, &record.ItemNote, &record.CreatedAt)
+	scanError := row.Scan(&record.ItemID, &record.ItemName, &record.ItemNote, &record.TagID, &record.CreatedAt)
 	return record, scanError
 }
 
@@ -118,8 +122,8 @@ func (service *application) handleCreateItem(responseWriter http.ResponseWriter,
 	}
 	record, scanError := scanItem(service.database.QueryRow(
 		request.Context(),
-		`INSERT INTO items (name, note) VALUES ($1, $2) RETURNING `+itemColumns,
-		itemName, payload.ItemNote,
+		`INSERT INTO items (name, note, tag_id) VALUES ($1, $2, $3) RETURNING `+itemColumns,
+		itemName, payload.ItemNote, payload.TagID,
 	))
 	if scanError != nil {
 		writeError(responseWriter, http.StatusInternalServerError, scanError.Error())
@@ -173,8 +177,8 @@ func (service *application) handleUpdateItem(responseWriter http.ResponseWriter,
 	}
 	record, scanError := scanItem(service.database.QueryRow(
 		request.Context(),
-		`UPDATE items SET name = $2, note = $3 WHERE id = $1 RETURNING `+itemColumns,
-		itemID, itemName, payload.ItemNote,
+		`UPDATE items SET name = $2, note = $3, tag_id = $4 WHERE id = $1 RETURNING `+itemColumns,
+		itemID, itemName, payload.ItemNote, payload.TagID,
 	))
 	if errors.Is(scanError, pgx.ErrNoRows) {
 		writeError(responseWriter, http.StatusNotFound, "item not found")
